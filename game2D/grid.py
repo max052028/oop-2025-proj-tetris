@@ -1,5 +1,5 @@
 import pygame
-from game2D.colors import Colors
+from colors import Colors
 
 class Grid:
 	def __init__(self):

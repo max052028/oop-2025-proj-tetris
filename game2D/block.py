@@ -1,6 +1,6 @@
-from game2D.colors import Colors
+from colors import Colors
 import pygame
-from game2D.position import Position
+from position import Position
 
 class Block:
 	def __init__(self, id):

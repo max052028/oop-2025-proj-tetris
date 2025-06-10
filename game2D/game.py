@@ -1,5 +1,5 @@
-from game2D.grid import Grid
-from game2D.blocks import *
+from grid import Grid
+from blocks import *
 import random
 import pygame
 

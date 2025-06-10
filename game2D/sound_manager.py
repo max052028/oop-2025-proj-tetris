@@ -5,12 +5,12 @@ class SoundManager:
         pygame.mixer.init()
 
         # Load music and sounds here
-        self.music_file = "Sounds/music.mp3"  # Change extension if needed
+        self.music_file = "game2D/Sounds/music.mp3"  # Change extension if needed
 
-        self.rotate_sound = pygame.mixer.Sound("Sounds/rotate.mp3")
-        self.clear_sound = pygame.mixer.Sound("Sounds/clear.mp3")
-        self.drop_sound = pygame.mixer.Sound("Sounds/drop.mp3")
-        self.gameover_sound = pygame.mixer.Sound("Sounds/gameover.mp3")
+        self.rotate_sound = pygame.mixer.Sound("game2D/Sounds/rotate.mp3")
+        self.clear_sound = pygame.mixer.Sound("game2D/Sounds/clear.mp3")
+        self.drop_sound = pygame.mixer.Sound("game2D/Sounds/drop.mp3")
+        self.gameover_sound = pygame.mixer.Sound("game2D/Sounds/gameover.mp3")
 
     def play_music(self):
         pygame.mixer.music.load(self.music_file)

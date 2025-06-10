@@ -1,6 +1,6 @@
 import pygame
-from game2D.colors import Colors
-from game2D.leaderboard import load_leaderboard
+from colors import Colors
+from leaderboard import load_leaderboard
 
 class Menu:
     def __init__(self, screen):

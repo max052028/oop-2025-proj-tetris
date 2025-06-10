@@ -1,10 +1,10 @@
 import pygame
 import sys
-from game2D.game import Game
-from game2D.colors import Colors
-from game2D.leaderboard import add_score
-from game2D.menu import Menu
-from game2D.sound_manager import SoundManager
+from game import Game
+from colors import Colors
+from leaderboard import add_score
+from menu import Menu
+from sound_manager import SoundManager
 
 pygame.init()
 screen = pygame.display.set_mode((500, 620))  # Standard dimensions
