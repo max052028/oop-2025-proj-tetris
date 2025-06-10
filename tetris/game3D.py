@@ -3,17 +3,19 @@ import numpy as np
 import math
 import random
 from pygame.locals import *
+from menu import Menu
+from leaderboard import Leaderboard
 
 # 初始化Pygame
 pygame.init()
-
+pygame.mixer.init()
 # 常數設定
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 GRID_SIZE = 20
-GRID_WIDTH = 5
-GRID_HEIGHT = 12
-GRID_DEPTH = 5
+GRID_WIDTH = 10
+GRID_HEIGHT = 20
+GRID_DEPTH = 10
 
 # 顏色定義
 BLACK = (0, 0, 0)
@@ -278,14 +280,26 @@ class Tetromino:
         [Vector3D(0, 0, 0), Vector3D(1, 0, 0), Vector3D(0, 1, 0), Vector3D(0, 0, 1)],
     ]
     
+    SHAPE_COLORS = {
+        0: CYAN,    # I shape
+        1: YELLOW,  # O shape
+        2: PURPLE,  # T shape
+        3: GREEN,   # S shape
+        4: RED,     # Z shape
+        5: BLUE,    # J shape
+        6: ORANGE,  # L shape
+        7: WHITE,   # 3D special shape
+    }
+    
     def __init__(self):
-        self.shape = random.choice(self.SHAPES)
+        shape_index = random.randint(0, len(self.SHAPES) - 1)
+        self.shape = self.SHAPES[shape_index]
         self.position = Vector3D(
             (GRID_WIDTH - 1) // 2,  # 對齊格線中心（支援奇數寬度）
             GRID_HEIGHT - 1,
             (GRID_DEPTH - 1) // 2
         )
-        self.color = random.choice(COLORS)
+        self.color = self.SHAPE_COLORS[shape_index]
         self.blocks = self.create_blocks()
     
     def create_blocks(self):
@@ -318,22 +332,24 @@ class Tetromino:
 class Game:
     def __init__(self):
         self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-        pygame.display.set_caption("3D 俄羅斯方塊")
+        pygame.display.set_caption("3D Tetris")
         self.clock = pygame.time.Clock()
         self.camera = Camera()
-        
-        # 遊戲狀態
+        self.menu = Menu(self.screen)
+        self.leaderboard = Leaderboard(self.screen)
         self.grid = np.zeros((GRID_WIDTH, GRID_HEIGHT, GRID_DEPTH), dtype=int)
         self.placed_blocks = []
         self.current_tetromino = Tetromino()
         self.fall_time = 0
-        self.fall_speed = 500  # 毫秒
+        self.fall_speed = 500
         self.score = 0
         self.font = pygame.font.Font(None, 36)
-        
-        # 控制狀態
         self.keys_pressed = set()
-    
+        # Load and play background music
+        pygame.mixer.music.load("background_music.mp3")  # Replace with your music file name
+        pygame.mixer.music.set_volume(0.5)  # Set volume (0.0 to 1.0)
+        pygame.mixer.music.play(-1)  # Play the music in a loop
+        
     def is_valid_position(self, tetromino):
         for offset in tetromino.shape:
             pos = tetromino.position + offset
@@ -576,48 +592,92 @@ class Game:
             self.screen.blit(rendered, (10, 50 + i * 25))
         
         pygame.display.flip()
+        
+    def get_player_name(self):
+        name = ""
+        font = pygame.font.Font(None, 36)
+        input_active = True
+
+        while input_active:
+            self.screen.fill(BLACK)
+            prompt_text = font.render("Enter your name:", True, WHITE)
+            self.screen.blit(prompt_text, (WINDOW_WIDTH // 2 - prompt_text.get_width() // 2, WINDOW_HEIGHT // 2 - 50))
+
+            name_text = font.render(name, True, WHITE)
+            self.screen.blit(name_text, (WINDOW_WIDTH // 2 - name_text.get_width() // 2, WINDOW_HEIGHT // 2))
+
+            pygame.display.flip()
+
+            for event in pygame.event.get():
+                if event.type == QUIT:
+                    pygame.quit()
+                    exit()
+                elif event.type == KEYDOWN:
+                    if event.key == K_RETURN:  # Press Enter to confirm
+                        input_active = False
+                    elif event.key == K_BACKSPACE:  # Press Backspace to delete a character
+                        name = name[:-1]
+                    else:
+                        name += event.unicode  # Add the typed character to the name
+
+        return name
     
+    def reset_game(self):
+        self.grid = np.zeros((GRID_WIDTH, GRID_HEIGHT, GRID_DEPTH), dtype=int)
+        self.placed_blocks = []
+        self.current_tetromino = Tetromino()
+        self.fall_time = 0
+        self.score = 0
+
     def run(self):
         running = True
-        game_active = True
-        
+        in_menu = True
+        game_active = False
+        in_leaderboard = False
+
         while running:
             dt = self.clock.tick(60)
-            mouse_buttons = pygame.mouse.get_pressed()
-            mouse_pos = pygame.mouse.get_pos()
-            
             for event in pygame.event.get():
                 if event.type == QUIT:
                     running = False
-                elif event.type == KEYDOWN:
-                    if event.key == K_r and not game_active:
-                        # 重新開始遊戲
-                        self.__init__()
-                        game_active = True
                 elif event.type == MOUSEWHEEL:
                     self.camera.handle_mouse_wheel(event)
-            
-            if game_active:
-                # 處理攝像機滑鼠控制
+
+            if in_menu:
+                self.menu.draw()
+                selected_option = self.menu.handle_input()
+                if selected_option == 0:  # Start Game
+                    in_menu = False
+                    game_active = True
+                elif selected_option == 1:  # Leaderboard
+                    in_menu = False
+                    in_leaderboard = True
+                elif selected_option == 2:  # Quit
+                    running = False
+            elif in_leaderboard:
+                self.leaderboard.draw()
+                if self.leaderboard.handle_input():
+                    in_leaderboard = False
+                    in_menu = True
+            elif game_active:
+                mouse_buttons = pygame.mouse.get_pressed()
+                mouse_pos = pygame.mouse.get_pos()
+
                 self.camera.handle_mouse(mouse_buttons, mouse_pos)
-                
                 self.handle_input()
                 game_active = self.update(dt)
                 self.draw()
-            else:
-                # 遊戲結束畫面
-                self.screen.fill(BLACK)
-                game_over_text = self.font.render("Game Over!", True, WHITE)
-                restart_text = self.font.render("Press R to Restart", True, WHITE)
-                final_score_text = self.font.render(f"Final Score: {self.score}", True, WHITE)
-                
-                self.screen.blit(game_over_text, (WINDOW_WIDTH//2 - 100, WINDOW_HEIGHT//2 - 60))
-                self.screen.blit(final_score_text, (WINDOW_WIDTH//2 - 120, WINDOW_HEIGHT//2 - 20))
-                self.screen.blit(restart_text, (WINDOW_WIDTH//2 - 130, WINDOW_HEIGHT//2 + 20))
-                pygame.display.flip()
-        
-        pygame.quit()
 
+                if not game_active:
+                    player_name = self.get_player_name()  # Prompt for player name
+                    self.leaderboard.save_score(player_name, self.score)  # Save score to leaderboard
+                    pygame.time.wait(500)
+                    self.reset_game() 
+                    in_menu = True
+                    
+        pygame.mixer.music.stop()
+        pygame.quit()
+        
 if __name__ == "__main__":
     game = Game()
     game.run()
