@@ -7,7 +7,7 @@ from menu import Menu
 from sound_manager import SoundManager
 
 pygame.init()
-screen = pygame.display.set_mode((500, 600))  # Standard dimensions
+screen = pygame.display.set_mode((500, 620))  # Standard dimensions
 pygame.display.set_caption("Python Tetris")
 
 clock = pygame.time.Clock()
