@@ -3,8 +3,8 @@ import numpy as np
 import math
 import random
 from pygame.locals import *
-from menu import Menu
-from leaderboard import Leaderboard
+from game2D.menu import Menu
+from game2D.leaderboard import Leaderboard
 
 # 初始化Pygame
 pygame.init()
