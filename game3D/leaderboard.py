@@ -6,7 +6,8 @@ import os
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 
-LEADERBOARD_FILE = "leaderboard.json"
+# Update the path to store the JSON file in the game3D directory
+LEADERBOARD_FILE = os.path.join(os.path.dirname(__file__), "leaderboard.json")
 
 class Leaderboard:
     def __init__(self, screen):
