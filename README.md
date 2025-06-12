@@ -3,7 +3,7 @@
 ## Overview
 This project is a 3D Tetris game implemented using Python and Pygame. It leverages Object-Oriented Programming (OOP) principles to organize the code into modular, reusable components. The game allows players to control tetromino blocks in a 3D space, rotate them along different axes, and drop them quickly to score points.
 
-![Game Preview](assets/game-preview.png)
+![Game Preview](game-preview.png)
 
 ---
 
