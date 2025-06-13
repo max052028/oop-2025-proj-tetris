@@ -68,17 +68,11 @@ The project is structured using OOP principles to ensure modularity, reusability
 - Clear layers to score points and prevent the grid from filling up.
 - Aim for the highest score!
 
----
 
-## Installation
 ### Requirements
 - Python 3.8 or higher
 - Pygame library
 
-### Steps
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-repo/3d-tetris.git
-   cd 3d-tetris
+
 
 

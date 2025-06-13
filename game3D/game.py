@@ -7,7 +7,8 @@ from menu import Menu
 from leaderboard import Leaderboard
 from camera import Camera
 from tetromino import Tetromino
-from constants import GRID_SIZE, GRID_WIDTH, GRID_HEIGHT, GRID_DEPTH, COLORS, WINDOW_WIDTH, WINDOW_HEIGHT, BLACK, WHITE, LIGHT_GRAY, TRANSPARENT_BLUE
+from constants import WINDOW_HEIGHT, WINDOW_WIDTH, GRID_SIZE, GRID_WIDTH, GRID_HEIGHT, GRID_DEPTH
+from constants import BLACK, WHITE, LIGHT_GRAY, TRANSPARENT_BLUE, RED, GREEN, BLUE
 
 class Game:
     def __init__(self):
@@ -113,6 +114,77 @@ class Game:
             pygame.draw.line(boundary_surface, LIGHT_GRAY, start_2d, end_2d, 2)
         
         self.screen.blit(boundary_surface, (0, 0))
+    
+    def draw_axes(self):
+        """Draw the X, Y, and Z axes for orientation."""
+        axis_length = GRID_SIZE * max(GRID_WIDTH, GRID_HEIGHT, GRID_DEPTH)
+
+        # Define the axes
+        axes = {
+            "X": (Vector3D(0, 0, 0), Vector3D(axis_length, 0, 0), RED),
+            "Y": (Vector3D(0, 0, 0), Vector3D(0, axis_length, 0), GREEN),
+            "Z": (Vector3D(0, 0, 0), Vector3D(0, 0, axis_length), BLUE),
+        }
+
+        for axis, (start, end, color) in axes.items():
+            # Project the start and end points of the axis
+            start_2d = self.camera.project(start)[0:2]
+            end_2d = self.camera.project(end)[0:2]
+
+            # Draw the axis line
+            pygame.draw.line(self.screen, color, start_2d, end_2d, 2)
+
+            # Draw the axis label
+            label_position = self.camera.project(end)[0:2]
+            font = pygame.font.Font(None, 24)
+            label = font.render(axis, True, color)
+            self.screen.blit(label, (label_position[0] - 10, label_position[1] - 10))
+    
+    def draw(self):
+        self.screen.fill(BLACK)
+        # Draw the game area boundary
+        self.draw_game_area_boundary()
+        # Draw the XYZ axes
+        self.draw_axes()
+        # Collect and sort all blocks by depth
+        all_blocks = []
+        
+        # Add placed blocks
+        for block in self.placed_blocks:
+            depth = self.camera.project(block.position)[2]
+            all_blocks.append((block, depth))
+        
+        # Add current tetromino blocks
+        for block in self.current_tetromino.blocks:
+            depth = self.camera.project(block.position)[2]
+            all_blocks.append((block, depth))
+        
+        # Sort blocks by depth (farther blocks first)
+        all_blocks.sort(key=lambda x: x[1], reverse=True)
+        
+        # Draw all blocks
+        for block, depth in all_blocks:
+            self.draw_block_with_faces(block)
+        
+        # Draw UI
+        score_text = self.font.render(f"Score: {self.score}", True, WHITE)
+        self.screen.blit(score_text, (10, 10))
+        
+        controls_text = [
+            "Controls:",
+            "WASD: Move Block",
+            "Q: Rotate X-axis",
+            "E: Rotate Y-axis",
+            "R: Rotate Z-axis",
+            "Space: Fast Drop",
+            "Mouse: Drag to rotate camera"
+        ]
+        
+        for i, text in enumerate(controls_text):
+            rendered = pygame.font.Font(None, 24).render(text, True, WHITE)
+            self.screen.blit(rendered, (10, 50 + i * 25))
+        
+        pygame.display.flip()
     
     def draw_block_with_faces(self, block):
         """繪製方塊的可見面"""
@@ -234,52 +306,6 @@ class Game:
         elif key == K_d:
             return right
         return Vector3D(0, 0, 0)
-
-    def draw(self):
-        self.screen.fill(BLACK)
-        
-        # 繪製遊戲區域邊界
-        self.draw_game_area_boundary()
-        
-        # 收集所有方塊並按深度排序
-        all_blocks = []
-        
-        # 添加已放置的方塊
-        for block in self.placed_blocks:
-            depth = self.camera.project(block.position)[2]
-            all_blocks.append((block, depth))
-        
-        # 添加當前方塊
-        for block in self.current_tetromino.blocks:
-            depth = self.camera.project(block.position)[2]
-            all_blocks.append((block, depth))
-        
-        # 按深度排序（遠的先畫）
-        all_blocks.sort(key=lambda x: x[1], reverse=True)
-        
-        # 繪製所有方塊
-        for block, depth in all_blocks:
-            self.draw_block_with_faces(block)
-        
-        # 繪製UI
-        score_text = self.font.render(f"Score: {self.score}", True, WHITE)
-        self.screen.blit(score_text, (10, 10))
-        
-        controls_text = [
-            "Controls:",
-            "WASD: Move Block",
-            "Q: Rotate X-axis",
-            "E: Rotate Y-axis",
-            "R: Rotate Z-axis",
-            "Space: Fast Drop",
-            "Mouse: Drag to rotate camera"
-        ]
-        
-        for i, text in enumerate(controls_text):
-            rendered = pygame.font.Font(None, 24).render(text, True, WHITE)
-            self.screen.blit(rendered, (10, 50 + i * 25))
-        
-        pygame.display.flip()
         
     def get_player_name(self):
         name = ""
@@ -316,53 +342,4 @@ class Game:
         self.current_tetromino = Tetromino()
         self.fall_time = 0
         self.score = 0
-
-    def run(self):
-        running = True
-        in_menu = True
-        game_active = False
-        in_leaderboard = False
-
-        while running:
-            dt = self.clock.tick(60)
-            for event in pygame.event.get():
-                if event.type == QUIT:
-                    running = False
-                elif event.type == MOUSEWHEEL:
-                    self.camera.handle_mouse_wheel(event)
-
-            if in_menu:
-                self.menu.draw()
-                selected_option = self.menu.handle_input()
-                if selected_option == 0:  # Start Game
-                    in_menu = False
-                    game_active = True
-                elif selected_option == 1:  # Leaderboard
-                    in_menu = False
-                    in_leaderboard = True
-                elif selected_option == 2:  # Quit
-                    running = False
-            elif in_leaderboard:
-                self.leaderboard.draw()
-                if self.leaderboard.handle_input():
-                    in_leaderboard = False
-                    in_menu = True
-            elif game_active:
-                mouse_buttons = pygame.mouse.get_pressed()
-                mouse_pos = pygame.mouse.get_pos()
-
-                self.camera.handle_mouse(mouse_buttons, mouse_pos)
-                self.handle_input()
-                game_active = self.update(dt)
-                self.draw()
-
-                if not game_active:
-                    player_name = self.get_player_name()  # Prompt for player name
-                    self.leaderboard.save_score(player_name, self.score)  # Save score to leaderboard
-                    pygame.time.wait(333)
-                    self.reset_game() 
-                    in_menu = True
-                    
-        pygame.mixer.music.stop()
-        pygame.quit()
-        
+     

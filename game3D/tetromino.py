@@ -2,8 +2,8 @@ import random
 import math
 from vector3d import Vector3D
 from block import Block
-from constants import GRID_SIZE, COLORS, GRID_WIDTH, GRID_HEIGHT, GRID_DEPTH
-from constants import CYAN, YELLOW, PURPLE, GREEN, RED, BLUE, ORANGE, WHITE
+from constants import GRID_SIZE, GRID_WIDTH, GRID_HEIGHT, GRID_DEPTH
+from constants import CYAN, YELLOW, PURPLE, GREEN, BLUE, ORANGE, WHITE
 
 class Tetromino:
     # 定義不同的俄羅斯方塊形狀（3D版本）
@@ -15,8 +15,6 @@ class Tetromino:
         # T形狀
         [Vector3D(0, 0, 0), Vector3D(-1, 0, 0), Vector3D(1, 0, 0), Vector3D(0, 1, 0)],
         # S形狀
-        [Vector3D(0, 0, 0), Vector3D(1, 0, 0), Vector3D(0, 1, 0), Vector3D(-1, 1, 0)],
-        # Z形狀
         [Vector3D(0, 0, 0), Vector3D(-1, 0, 0), Vector3D(0, 1, 0), Vector3D(1, 1, 0)],
         # J形狀
         [Vector3D(0, 0, 0), Vector3D(0, 1, 0), Vector3D(0, 2, 0), Vector3D(-1, 2, 0)],
@@ -31,10 +29,9 @@ class Tetromino:
         1: YELLOW,  # O shape
         2: PURPLE,  # T shape
         3: GREEN,   # S shape
-        4: RED,     # Z shape
-        5: BLUE,    # J shape
-        6: ORANGE,  # L shape
-        7: WHITE,   # 3D special shape
+        4: BLUE,    # J shape
+        5: ORANGE,  # L shape
+        6: WHITE,   # 3D special shape
     }
     
     def __init__(self):
@@ -58,7 +55,7 @@ class Tetromino:
     def move(self, dx, dy, dz):
         self.position = self.position + Vector3D(dx, dy, dz)
         self.blocks = self.create_blocks()
-    
+        
     def rotate_x(self):
         new_shape = []
         for offset in self.shape:
