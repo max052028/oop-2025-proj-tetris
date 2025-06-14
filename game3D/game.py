@@ -11,26 +11,44 @@ from constants import WINDOW_HEIGHT, WINDOW_WIDTH, GRID_SIZE, GRID_WIDTH, GRID_H
 from constants import BLACK, WHITE, LIGHT_GRAY, TRANSPARENT_BLUE, RED, GREEN, BLUE
 
 class Game:
-    def __init__(self):
-        self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+    def __init__(self, settings=None):
+        if settings:
+            width = settings.get("screen_width", 800)
+            height = settings.get("screen_height", 600)
+            volume = settings.get("volume", 0.5)
+        else:
+            width = WINDOW_WIDTH
+            height = WINDOW_HEIGHT
+            volume = 0.5
+        self.screen = pygame.display.set_mode((width, height))
         pygame.display.set_caption("3D Tetris")
         self.clock = pygame.time.Clock()
-        self.camera = Camera()
+        self.camera = Camera(screen_width=width, screen_height=height)
         self.menu = Menu(self.screen)
         self.leaderboard = Leaderboard(self.screen)
         self.grid = np.zeros((GRID_WIDTH, GRID_HEIGHT, GRID_DEPTH), dtype=int)
         self.placed_blocks = []
         self.current_tetromino = Tetromino()
         self.fall_time = 0
-        self.fall_speed = 500
+        self.fall_speed = 750
         self.score = 0
         self.font = pygame.font.Font(None, 36)
         self.keys_pressed = set()
         # Load and play background music
         pygame.mixer.music.load("game3D/background_music.mp3")  # Replace with your music file name
-        pygame.mixer.music.set_volume(0.5)  # Set volume (0.0 to 1.0)
+        pygame.mixer.music.set_volume(volume)  # Set volume (0.0 to 1.0)
         pygame.mixer.music.play(-1)  # Play the music in a loop
-        
+        self.settings = settings
+
+    def apply_settings(self, settings):
+        width = settings.get("screen_width", 800)
+        height = settings.get("screen_height", 600)
+        volume = settings.get("volume", 0.5)
+        self.screen = pygame.display.set_mode((width, height))
+        pygame.mixer.music.set_volume(volume)
+        self.camera.set_screen_size(width, height)
+        self.settings = settings
+    
     def is_valid_position(self, tetromino):
         for offset in tetromino.shape:
             pos = tetromino.position + offset
@@ -140,6 +158,29 @@ class Game:
             label = font.render(axis, True, color)
             self.screen.blit(label, (label_position[0] - 10, label_position[1] - 10))
     
+    def get_ghost_tetromino(self, grid):
+        # 複製目前方塊
+        ghost = Tetromino()
+        ghost.shape = self.current_tetromino.shape[:]
+        ghost.position = Vector3D(
+            self.current_tetromino.position.x,
+            self.current_tetromino.position.y,
+            self.current_tetromino.position.z
+        )
+        ghost.color = (180, 180, 180)  # 用灰色顯示預置
+        # 一直往下移動直到不能再下
+        while True:
+            test = Tetromino()
+            test.shape = ghost.shape[:]
+            test.position = Vector3D(ghost.position.x, ghost.position.y - 1, ghost.position.z)
+            test.color = ghost.color
+            if self.is_valid_position(test):
+                ghost.position.y -= 1
+            else:
+                break
+        ghost.blocks = ghost.create_blocks()
+        return ghost
+
     def draw(self):
         self.screen.fill(BLACK)
         # Draw the game area boundary
@@ -148,28 +189,35 @@ class Game:
         self.draw_axes()
         # Collect and sort all blocks by depth
         all_blocks = []
-        
         # Add placed blocks
         for block in self.placed_blocks:
             depth = self.camera.project(block.position)[2]
             all_blocks.append((block, depth))
-        
+        # Add ghost tetromino blocks
+        ghost = self.get_ghost_tetromino(self.grid)
+        for block in ghost.blocks:
+            depth = self.camera.project(block.position)[2]
+            all_blocks.append((block, depth, True))  # True 代表 ghost
         # Add current tetromino blocks
         for block in self.current_tetromino.blocks:
             depth = self.camera.project(block.position)[2]
-            all_blocks.append((block, depth))
-        
+            all_blocks.append((block, depth, False))
         # Sort blocks by depth (farther blocks first)
         all_blocks.sort(key=lambda x: x[1], reverse=True)
-        
         # Draw all blocks
-        for block, depth in all_blocks:
-            self.draw_block_with_faces(block)
-        
+        for item in all_blocks:
+            if len(item) == 3:
+                block, depth, is_ghost = item
+            else:
+                block, depth = item
+                is_ghost = False
+            if is_ghost:
+                self.draw_block_with_faces(block, ghost=True)
+            else:
+                self.draw_block_with_faces(block)
         # Draw UI
         score_text = self.font.render(f"Score: {self.score}", True, WHITE)
         self.screen.blit(score_text, (10, 10))
-        
         controls_text = [
             "Controls:",
             "WASD: Move Block",
@@ -179,40 +227,35 @@ class Game:
             "Space: Fast Drop",
             "Mouse: Drag to rotate camera"
         ]
-        
         for i, text in enumerate(controls_text):
             rendered = pygame.font.Font(None, 24).render(text, True, WHITE)
             self.screen.blit(rendered, (10, 50 + i * 25))
-        
         pygame.display.flip()
-    
-    def draw_block_with_faces(self, block):
+
+    def draw_block_with_faces(self, block, ghost=False):
         """繪製方塊的可見面"""
         visible_faces = block.get_face_vertices(self.camera)
-        
-        # 按深度排序
         visible_faces.sort(key=lambda x: x[2], reverse=True)
-        
         for face_name, vertices, depth in visible_faces:
-            # 投影頂點
             projected_vertices = [self.camera.project(v)[0:2] for v in vertices]
-            
-            # 計算面的顏色（添加深度陰影）
             base_color = block.color
+            color = (200, 200, 200) if ghost else base_color
             if face_name in ['back', 'bottom', 'left']:
-                # 背面、底面、左面稍微暗一些
                 shadow_factor = 0.7
                 color = (
-                    int(base_color[0] * shadow_factor),
-                    int(base_color[1] * shadow_factor),
-                    int(base_color[2] * shadow_factor)
+                    int(color[0] * shadow_factor),
+                    int(color[1] * shadow_factor),
+                    int(color[2] * shadow_factor)
                 )
+            if ghost:
+                # 半透明繪製 ghost
+                ghost_surface = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+                pygame.draw.polygon(ghost_surface, (color[0], color[1], color[2], 80), projected_vertices)
+                self.screen.blit(ghost_surface, (0, 0))
+                pygame.draw.polygon(self.screen, (180, 180, 180), projected_vertices, 1)
             else:
-                color = base_color
-            
-            # 繪製面
-            pygame.draw.polygon(self.screen, color, projected_vertices)
-            pygame.draw.polygon(self.screen, BLACK, projected_vertices, 2)
+                pygame.draw.polygon(self.screen, color, projected_vertices)
+                pygame.draw.polygon(self.screen, BLACK, projected_vertices, 2)
     
     def handle_input(self):
         keys = pygame.key.get_pressed()
@@ -263,9 +306,8 @@ class Game:
     
     def update(self, dt):
         self.fall_time += dt
-        
         if self.fall_time >= self.fall_speed:
-            # 嘗試讓方塊下降
+            # 嘗試讓方塊下降一層
             test_tetromino = Tetromino()
             test_tetromino.shape = self.current_tetromino.shape[:]
             test_tetromino.position = Vector3D(
@@ -274,21 +316,18 @@ class Game:
                 self.current_tetromino.position.z
             )
             test_tetromino.color = self.current_tetromino.color
-            
+
             if self.is_valid_position(test_tetromino):
                 self.current_tetromino.move(0, -1, 0)
             else:
-                # 方塊到底了，放置並創建新方塊
+                # 只有在嘗試下移一層失敗時才固定方塊，允許玩家極限嵌入
                 self.place_tetromino()
                 self.clear_lines()
                 self.current_tetromino = Tetromino()
-                
                 # 檢查遊戲結束
                 if not self.is_valid_position(self.current_tetromino):
                     return False  # 遊戲結束
-            
             self.fall_time = 0
-        
         return True
     
     def get_movement_direction(self, key):
@@ -342,4 +381,4 @@ class Game:
         self.current_tetromino = Tetromino()
         self.fall_time = 0
         self.score = 0
-     
+

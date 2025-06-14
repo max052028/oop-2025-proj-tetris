@@ -1,0 +1,16 @@
+{
+    "screen_width": 800,
+    "screen_height": 600,
+    "mouse_sensitivity_x": 1.0,
+    "mouse_sensitivity_y": 1.0,
+    "volume": 0.5,
+    "key_bindings": {
+        "move_left": "a",
+        "move_right": "d",
+        "move_down": "s",
+        "rotate_x": "w",
+        "rotate_y": "q",
+        "rotate_z": "e",
+        "drop": "space"
+    }
+}

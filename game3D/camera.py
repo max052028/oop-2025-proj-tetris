@@ -3,9 +3,12 @@ from vector3d import Vector3D
 from constants import GRID_WIDTH, GRID_HEIGHT, GRID_DEPTH, GRID_SIZE, WINDOW_WIDTH, WINDOW_HEIGHT
 
 class Camera:
-    def __init__(self, target=Vector3D(GRID_WIDTH * GRID_SIZE / 2, GRID_HEIGHT * GRID_SIZE / 2, GRID_DEPTH * GRID_SIZE / 2), distance=800, rotation_x=-0.3, rotation_y=0.5):
+    def __init__(self, screen_width=800, screen_height=600, target=Vector3D(GRID_WIDTH * GRID_SIZE / 2, GRID_HEIGHT * GRID_SIZE / 2, GRID_DEPTH * GRID_SIZE / 2), distance=None, rotation_x=-0.3, rotation_y=0.5):
+        self.screen_width = screen_width
+        self.screen_height = screen_height
         self.target = target
-        self.distance = distance
+        # 根據解析度自動設置鏡頭距離
+        self.distance = distance if distance is not None else max(screen_width, screen_height)
         self.rotation_x = rotation_x
         self.rotation_y = rotation_y
         self.mouse_dragging = False
@@ -51,9 +54,9 @@ class Camera:
         if z <= 0:
             z = 0.001
         
-        factor = 800 / z
-        screen_x = int(x * factor + WINDOW_WIDTH // 2)
-        screen_y = int(-y * factor + WINDOW_HEIGHT // 2)
+        factor = self.screen_height * 1.33 / z  # 根據螢幕高度自適應
+        screen_x = int(x * factor + self.screen_width // 2)
+        screen_y = int(-y * factor + self.screen_height // 2)
         
         return (screen_x, screen_y, z)
     
@@ -74,3 +77,10 @@ class Camera:
                 self.update_position()
         else:
             self.mouse_dragging = False
+    
+    def set_screen_size(self, width, height):
+        self.screen_width = width
+        self.screen_height = height
+        # 視窗變大時自動拉遠鏡頭
+        self.distance = max(width, height)
+        self.update_position()
