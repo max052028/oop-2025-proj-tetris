@@ -271,28 +271,48 @@ class Game:
                 if self.is_valid_position(test):
                     self.current_tetromino.move(dx, 0, dz)
 
-        # Q旋轉X軸，E旋轉Y軸, R旋轉Z軸
-        if keys[K_q] and K_q not in self.keys_pressed:
-            old_shape = self.current_tetromino.shape[:]
-            self.current_tetromino.rotate_x()
-            if not self.is_valid_position(self.current_tetromino):
-                self.current_tetromino.shape = old_shape
-                self.current_tetromino.blocks = self.current_tetromino.create_blocks()
-
-        if keys[K_e] and K_e not in self.keys_pressed:
-            old_shape = self.current_tetromino.shape[:]
-            self.current_tetromino.rotate_y()
-            if not self.is_valid_position(self.current_tetromino):
-                self.current_tetromino.shape = old_shape
-                self.current_tetromino.blocks = self.current_tetromino.create_blocks()
-        
-        if keys[K_r] and K_r not in self.keys_pressed:
-            old_shape = self.current_tetromino.shape[:]
-            self.current_tetromino.rotate_z()
-            if not self.is_valid_position(self.current_tetromino):
-                self.current_tetromino.shape = old_shape
-                self.current_tetromino.blocks = self.current_tetromino.create_blocks()
-        
+        # Q/E 基於鏡頭朝向的左右旋轉
+        if (keys[K_q] or keys[K_e]) and (K_q not in self.keys_pressed and K_e not in self.keys_pressed):
+            # 取得鏡頭 forward 向量
+            forward = (self.camera.target - self.camera.position).normalize()
+            # 判斷鏡頭主要朝向哪個軸
+            abs_x, abs_y, abs_z = abs(forward.x), abs(forward.y), abs(forward.z)
+            if abs_x >= abs_y and abs_x >= abs_z:
+                # 朝向X軸，Q/E繞X旋轉
+                if forward.x > 0:
+                    if keys[K_q]:
+                        self.try_rotate('x', 1)
+                    elif keys[K_e]:
+                        self.try_rotate('x', -1)
+                else:
+                    if keys[K_q]:
+                        self.try_rotate('x', -1)
+                    elif keys[K_e]:
+                        self.try_rotate('x', 1)
+            elif abs_z >= abs_x and abs_z >= abs_y:
+                # 朝向Z軸，Q/E繞Z旋轉
+                if forward.z > 0:
+                    if keys[K_q]:
+                        self.try_rotate('z', 1)
+                    elif keys[K_e]:
+                        self.try_rotate('z', -1)
+                else:
+                    if keys[K_q]:
+                        self.try_rotate('z', -1)
+                    elif keys[K_e]:
+                        self.try_rotate('z', 1)
+            else:
+                # 朝向Y軸，Q/E繞Y旋轉
+                if forward.y > 0:
+                    if keys[K_q]:
+                        self.try_rotate('y', 1)
+                    elif keys[K_e]:
+                        self.try_rotate('y', -1)
+                else:
+                    if keys[K_q]:
+                        self.try_rotate('y', -1)
+                    elif keys[K_e]:
+                        self.try_rotate('y', 1)
         # 空白鍵快速下降
         if keys[K_SPACE]:
             test = Tetromino()
@@ -303,6 +323,32 @@ class Game:
                 self.current_tetromino.move(0, -1, 0)
                 self.score += 1
         self.keys_pressed = {key for key in [K_a, K_d, K_w, K_s, K_q, K_e, K_r] if keys[key]}
+    
+    def try_rotate(self, axis, direction):
+        old_shape = self.current_tetromino.shape[:]
+        # 修正旋轉方向，將 direction 取反
+        direction = -direction
+        if axis == 'x':
+            if direction == 1:
+                self.current_tetromino.rotate_x()
+            else:
+                for _ in range(3):
+                    self.current_tetromino.rotate_x()
+        elif axis == 'y':
+            if direction == 1:
+                self.current_tetromino.rotate_y()
+            else:
+                for _ in range(3):
+                    self.current_tetromino.rotate_y()
+        elif axis == 'z':
+            if direction == 1:
+                self.current_tetromino.rotate_z()
+            else:
+                for _ in range(3):
+                    self.current_tetromino.rotate_z()
+        if not self.is_valid_position(self.current_tetromino):
+            self.current_tetromino.shape = old_shape
+            self.current_tetromino.blocks = self.current_tetromino.create_blocks()
     
     def update(self, dt):
         self.fall_time += dt
