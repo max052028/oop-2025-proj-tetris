@@ -19,10 +19,10 @@ DEFAULT_SETTINGS = {
     "key_bindings": {
         "move_left": "a",
         "move_right": "d",
-        "move_down": "s",
-        "rotate_x": "w",
-        "rotate_y": "q",
-        "rotate_z": "e",
+        "move_forward": "s",
+        "move_backward": "w",
+        "rotate_left": "q",
+        "rotate_right": "e",
         "drop": "space"
     }
 }
@@ -58,11 +58,26 @@ class SettingsMenu:
         self.selected = 0
         self.editing = False
         self.input_text = ""
+        # 只包含實際有用到的控制項
+        self.key_binding_keys = [
+            ("move_left", "Move Left"),
+            ("move_right", "Move Right"),
+            ("move_forward", "Move Forward"),
+            ("move_backward", "Move Backward"),
+            ("rotate_left", "Rotate Left"),
+            ("rotate_right", "Rotate Right"),
+            ("drop", "Fast Drop"),
+            ("Back to Settings", "Back to Settings")
+        ]
         self.key_binding_index = 0
-        self.key_binding_keys = list(self.settings.settings["key_bindings"].keys())
+        self.in_key_binding_menu = False
+        self.key_binding_editing = False
 
     def draw(self):
         self.screen.fill(BLACK)
+        if self.in_key_binding_menu:
+            self.draw_key_binding_menu()
+            return
         title = self.font.render("Settings", True, WHITE)
         self.screen.blit(title, (400 - title.get_width() // 2, 60))
         for i, option in enumerate(self.options):
@@ -82,20 +97,76 @@ class SettingsMenu:
             elif option == "Volume":
                 val = str(self.settings.get("volume"))
             elif option == "Customize Keyboard":
-                val = self.key_binding_keys[self.key_binding_index] + ": " + self.settings.settings["key_bindings"][self.key_binding_keys[self.key_binding_index]]
+                # 只在不是 'Back to Settings' 時顯示鍵值
+                kb_idx = self.key_binding_index
+                kb_key, kb_label = self.key_binding_keys[kb_idx]
+                if kb_key != "Back to Settings":
+                    val = kb_label + ": " + self.settings.settings["key_bindings"].get(kb_key, "")
+                else:
+                    val = ""
             else:
                 val = ""
-            if val:
-                val_text = self.font.render(val, True, LIGHT_GRAY)
+            # 修正：編輯時顯示 input_text 並高亮顏色
+            if self.editing and i == self.selected:
+                show_val = self.input_text if self.input_text else val
+                val_color = (255, 255, 0)  # 黃色高亮
+            else:
+                show_val = val
+                val_color = LIGHT_GRAY
+            if show_val:
+                val_text = self.font.render(show_val, True, val_color)
+                self.screen.blit(val_text, (500, y))
+        pygame.display.flip()
+
+    def draw_key_binding_menu(self):
+        self.screen.fill(BLACK)  # 清除畫面，避免標題重疊
+        title = self.font.render("Customize Keyboard", True, WHITE)
+        self.screen.blit(title, (400 - title.get_width() // 2, 60))
+        for i, (key, label) in enumerate(self.key_binding_keys):
+            color = WHITE if i == self.key_binding_index else GRAY
+            text = self.font.render(label, True, color)
+            y = 150 + i * 50
+            self.screen.blit(text, (100, y))
+            if key != "Back to Settings":
+                val = self.settings.settings["key_bindings"].get(key, "")
+                val_color = LIGHT_GRAY
+                val_text = self.font.render(val, True, val_color)
                 self.screen.blit(val_text, (500, y))
         pygame.display.flip()
 
     def handle_input(self, events):
+        if self.in_key_binding_menu:
+            for event in events:
+                if self.key_binding_editing:
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == K_RETURN:
+                            self.key_binding_editing = False
+                        else:
+                            key, _ = self.key_binding_keys[self.key_binding_index]
+                            if key != "Back to Settings":
+                                self.settings.settings["key_bindings"][key] = pygame.key.name(event.key)
+                    return None
+                if event.type == pygame.KEYDOWN:
+                    if event.key in (K_w, K_UP):
+                        self.key_binding_index = (self.key_binding_index - 1) % len(self.key_binding_keys)
+                    elif event.key in (K_s, K_DOWN):
+                        self.key_binding_index = (self.key_binding_index + 1) % len(self.key_binding_keys)
+                    elif event.key == K_RETURN:
+                        key, _ = self.key_binding_keys[self.key_binding_index]
+                        if key == "Back to Settings":
+                            self.in_key_binding_menu = False
+                        else:
+                            self.key_binding_editing = True
+            return None
+        # ...existing code for normal settings menu...
         for event in events:
             if self.editing:
                 if event.type == pygame.KEYDOWN:
                     if event.key == K_RETURN:
                         self.apply_edit()
+                        # 如果是自訂鍵位，顯示所有控制列表
+                        if self.options[self.selected] == "Customize Keyboard":
+                            self.show_key_bindings()
                         self.editing = False
                         self.input_text = ""
                     elif event.key == K_BACKSPACE:
@@ -117,16 +188,11 @@ class SettingsMenu:
                         self.settings.save()
                         return True
                     elif self.options[self.selected] == "Customize Keyboard":
-                        self.editing = True
-                        self.input_text = ""
+                        self.in_key_binding_menu = True
+                        self.key_binding_index = 0
                     else:
                         self.editing = True
                         self.input_text = ""
-                elif self.options[self.selected] == "Customize Keyboard":
-                    if event.key == K_a:
-                        self.key_binding_index = (self.key_binding_index - 1) % len(self.key_binding_keys)
-                    elif event.key == K_d:
-                        self.key_binding_index = (self.key_binding_index + 1) % len(self.key_binding_keys)
         return None
 
     def apply_edit(self):
@@ -159,5 +225,32 @@ class SettingsMenu:
             except ValueError:
                 pass
         elif option == "Customize Keyboard":
-            key = self.key_binding_keys[self.key_binding_index]
+            key = self.key_binding_keys[self.key_binding_index][0]
             self.settings.settings["key_bindings"][key] = self.input_text
+
+    def show_key_bindings(self):
+        # 彈出一個簡單的鍵位說明視窗
+        info = [
+            "Key Bindings:",
+            f"Move Left: {self.settings.settings['key_bindings'].get('move_left', 'a')}",
+            f"Move Right: {self.settings.settings['key_bindings'].get('move_right', 'd')}",
+            f"Move Down: {self.settings.settings['key_bindings'].get('move_down', 's')}",
+            f"Rotate (Q/E): {self.settings.settings['key_bindings'].get('rotate_y', 'q')}/{self.settings.settings['key_bindings'].get('rotate_x', 'e')}",
+            f"Rotate Z: {self.settings.settings['key_bindings'].get('rotate_z', 'r')}",
+            f"Fast Drop: {self.settings.settings['key_bindings'].get('drop', 'space')}",
+            "Press any key to continue..."
+        ]
+        popup = pygame.Surface((600, 350))
+        popup.fill((30, 30, 30))
+        font = pygame.font.Font(None, 36)
+        for i, line in enumerate(info):
+            text = font.render(line, True, (255, 255, 0) if i == 0 else (255, 255, 255))
+            popup.blit(text, (30, 30 + i * 40))
+        self.screen.blit(popup, (self.screen.get_width()//2 - 300, self.screen.get_height()//2 - 175))
+        pygame.display.flip()
+        # 等待任意鍵
+        waiting = True
+        while waiting:
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
+                    waiting = False

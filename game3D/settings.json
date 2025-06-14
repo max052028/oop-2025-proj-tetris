@@ -7,10 +7,10 @@
     "key_bindings": {
         "move_left": "a",
         "move_right": "d",
-        "move_down": "s",
-        "rotate_x": "w",
-        "rotate_y": "q",
-        "rotate_z": "e",
+        "move_forward": "w",
+        "move_backward": "s",
+        "rotate_left": "q",
+        "rotate_right": "e",
         "drop": "space"
     }
 }
