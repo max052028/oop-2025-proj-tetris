@@ -3,7 +3,7 @@
     "screen_height": 600,
     "mouse_sensitivity_x": 1.0,
     "mouse_sensitivity_y": 1.0,
-    "volume": 0.5,
+    "volume": 0.2,
     "key_bindings": {
         "move_left": "a",
         "move_right": "d",

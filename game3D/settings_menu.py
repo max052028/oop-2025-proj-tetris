@@ -186,6 +186,8 @@ class SettingsMenu:
                 elif event.key == K_RETURN:
                     if self.options[self.selected] == "Save and Return":
                         self.settings.save()
+                        self.settings.load()  # 立即重新載入設定，讓 key_bindings 變更即時生效
+                        # 請在主程式收到 True 後呼叫 game.apply_settings(self.settings.settings)
                         return True
                     elif self.options[self.selected] == "Customize Keyboard":
                         self.in_key_binding_menu = True

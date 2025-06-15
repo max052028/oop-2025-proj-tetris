@@ -13,6 +13,7 @@ def main():
     game_active = False
     in_leaderboard = False
     in_settings = False
+    paused_from_game = False  # 新增旗標
     settings_menu = SettingsMenu(game.screen, settings)
 
     while running:
@@ -47,10 +48,22 @@ def main():
             settings_menu.draw()
             if settings_menu.handle_input(events):
                 in_settings = False
-                in_menu = True
+                # 判斷是從遊戲還是主選單進入設定
+                if paused_from_game:
+                    game_active = True
+                    paused_from_game = False
+                else:
+                    in_menu = True
                 # 重新套用設定
-                game.apply_settings(settings)
+                game.apply_settings(settings.settings)
         elif game_active:
+            # 檢查是否按下ESC，若有則暫停並進入設定選單
+            esc_pressed = any(event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE for event in events)
+            if esc_pressed:
+                in_settings = True
+                game_active = False
+                paused_from_game = True  # 標記是從遊戲暫停
+                continue
             mouse_buttons = pygame.mouse.get_pressed()
             mouse_pos = pygame.mouse.get_pos()
 

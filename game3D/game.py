@@ -9,9 +9,20 @@ from camera import Camera
 from tetromino import Tetromino
 from constants import WINDOW_HEIGHT, WINDOW_WIDTH, GRID_SIZE, GRID_WIDTH, GRID_HEIGHT, GRID_DEPTH
 from constants import BLACK, WHITE, LIGHT_GRAY, TRANSPARENT_BLUE, RED, GREEN, BLUE
+import json
+from keymap_util import get_key_constant
 
 class Game:
     def __init__(self, settings=None):
+        if settings is None:
+            # 若未傳入則自動讀取 settings.json
+            with open('game3D/settings.json', 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+        # 解析 key_bindings
+        self.key_bindings = {}
+        for action, key_name in settings.get('key_bindings', {}).items():
+            self.key_bindings[action] = get_key_constant(key_name)
+
         if settings:
             width = settings.get("screen_width", 800)
             height = settings.get("screen_height", 600)
@@ -48,7 +59,12 @@ class Game:
         pygame.mixer.music.set_volume(volume)
         self.camera.set_screen_size(width, height)
         self.settings = settings
-    
+
+        # 重新解析 key_bindings 以即時生效
+        self.key_bindings = {}
+        for action, key_name in settings.get('key_bindings', {}).items():
+            self.key_bindings[action] = get_key_constant(key_name)
+
     def is_valid_position(self, tetromino):
         for offset in tetromino.shape:
             pos = tetromino.position + offset
@@ -259,7 +275,15 @@ class Game:
     
     def handle_input(self):
         keys = pygame.key.get_pressed()
-        directions = [K_w, K_a, K_s, K_d]
+        # 取得自訂鍵位
+        move_left = self.key_bindings.get('move_left', K_a)
+        move_right = self.key_bindings.get('move_right', K_d)
+        move_forward = self.key_bindings.get('move_forward', K_w)
+        move_backward = self.key_bindings.get('move_backward', K_s)
+        rotate_left = self.key_bindings.get('rotate_left', K_q)
+        rotate_right = self.key_bindings.get('rotate_right', K_e)
+        drop = self.key_bindings.get('drop', K_SPACE)
+        directions = [move_forward, move_left, move_backward, move_right]
         for key in directions:
             if keys[key] and key not in self.keys_pressed:
                 dir = self.get_movement_direction(key)
@@ -271,50 +295,45 @@ class Game:
                 if self.is_valid_position(test):
                     self.current_tetromino.move(dx, 0, dz)
 
-        # Q/E 基於鏡頭朝向的左右旋轉
-        if (keys[K_q] or keys[K_e]) and (K_q not in self.keys_pressed and K_e not in self.keys_pressed):
-            # 取得鏡頭 forward 向量
+        # 旋轉
+        if (keys[rotate_left] or keys[rotate_right]) and (rotate_left not in self.keys_pressed and rotate_right not in self.keys_pressed):
             forward = (self.camera.target - self.camera.position).normalize()
-            # 判斷鏡頭主要朝向哪個軸
             abs_x, abs_y, abs_z = abs(forward.x), abs(forward.y), abs(forward.z)
             if abs_x >= abs_y and abs_x >= abs_z:
-                # 朝向X軸，Q/E繞X旋轉
                 if forward.x > 0:
-                    if keys[K_q]:
+                    if keys[rotate_left]:
                         self.try_rotate('x', 1)
-                    elif keys[K_e]:
+                    elif keys[rotate_right]:
                         self.try_rotate('x', -1)
                 else:
-                    if keys[K_q]:
+                    if keys[rotate_left]:
                         self.try_rotate('x', -1)
-                    elif keys[K_e]:
+                    elif keys[rotate_right]:
                         self.try_rotate('x', 1)
             elif abs_z >= abs_x and abs_z >= abs_y:
-                # 朝向Z軸，Q/E繞Z旋轉
                 if forward.z > 0:
-                    if keys[K_q]:
+                    if keys[rotate_left]:
                         self.try_rotate('z', 1)
-                    elif keys[K_e]:
+                    elif keys[rotate_right]:
                         self.try_rotate('z', -1)
                 else:
-                    if keys[K_q]:
+                    if keys[rotate_left]:
                         self.try_rotate('z', -1)
-                    elif keys[K_e]:
+                    elif keys[rotate_right]:
                         self.try_rotate('z', 1)
             else:
-                # 朝向Y軸，Q/E繞Y旋轉
                 if forward.y > 0:
-                    if keys[K_q]:
+                    if keys[rotate_left]:
                         self.try_rotate('y', 1)
-                    elif keys[K_e]:
+                    elif keys[rotate_right]:
                         self.try_rotate('y', -1)
                 else:
-                    if keys[K_q]:
+                    if keys[rotate_left]:
                         self.try_rotate('y', -1)
-                    elif keys[K_e]:
+                    elif keys[rotate_right]:
                         self.try_rotate('y', 1)
-        # 空白鍵快速下降
-        if keys[K_SPACE]:
+        # 快速下降
+        if keys[drop]:
             test = Tetromino()
             test.shape = self.current_tetromino.shape[:]
             test.position = self.current_tetromino.position + Vector3D(0, -1, 0)
@@ -322,7 +341,7 @@ class Game:
             if self.is_valid_position(test):
                 self.current_tetromino.move(0, -1, 0)
                 self.score += 1
-        self.keys_pressed = {key for key in [K_a, K_d, K_w, K_s, K_q, K_e, K_r] if keys[key]}
+        self.keys_pressed = {key for key in [move_left, move_right, move_forward, move_backward, rotate_left, rotate_right] if keys[key]}
     
     def try_rotate(self, axis, direction):
         old_shape = self.current_tetromino.shape[:]
@@ -377,18 +396,22 @@ class Game:
         return True
     
     def get_movement_direction(self, key):
+        # 取得自訂鍵位
+        move_left = self.key_bindings.get('move_left', K_a)
+        move_right = self.key_bindings.get('move_right', K_d)
+        move_forward = self.key_bindings.get('move_forward', K_w)
+        move_backward = self.key_bindings.get('move_backward', K_s)
         forward = (self.camera.target - self.camera.position).normalize()
         forward.y = 0
         forward = forward.normalize()
-        right = Vector3D(-forward.z, 0, forward.x)  # 修正 right 為右手系（使 A 左、D 右）
-
-        if key == K_w:
+        right = Vector3D(-forward.z, 0, forward.x)
+        if key == move_forward:
             return forward
-        elif key == K_s:
+        elif key == move_backward:
             return forward * -1
-        elif key == K_a:
+        elif key == move_left:
             return right * -1
-        elif key == K_d:
+        elif key == move_right:
             return right
         return Vector3D(0, 0, 0)
         
