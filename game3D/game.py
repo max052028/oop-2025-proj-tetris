@@ -91,26 +91,26 @@ class Game:
     
     def clear_lines(self):
         lines_cleared = 0
-        for y in range(GRID_HEIGHT):
+        y = 0
+        while y < GRID_HEIGHT:
             if np.all(self.grid[:, y, :] == 1):
                 # 清除這一層
                 self.grid[:, y, :] = 0
                 # 移除對應的方塊
                 self.placed_blocks = [block for block in self.placed_blocks 
                                     if int(block.position.y / GRID_SIZE) != y]
-                
                 # 讓上面的方塊下降
                 for above_y in range(y + 1, GRID_HEIGHT):
                     self.grid[:, above_y - 1, :] = self.grid[:, above_y, :]
                     self.grid[:, above_y, :] = 0
-                
                 # 更新方塊位置
                 for block in self.placed_blocks:
                     if block.position.y > y * GRID_SIZE:
                         block.position.y -= GRID_SIZE
-                
                 lines_cleared += 1
-        
+                # 消除後，y 不遞增，繼續檢查同一層
+            else:
+                y += 1
         if lines_cleared > 0:
             self.score += lines_cleared * 100
     
@@ -237,9 +237,8 @@ class Game:
         controls_text = [
             "Controls:",
             "WASD: Move Block",
-            "Q: Rotate X-axis",
-            "E: Rotate Y-axis",
-            "R: Rotate Z-axis",
+            "Q: Rotate Left",
+            "E: Rotate Right",
             "Space: Fast Drop",
             "Mouse: Drag to rotate camera"
         ]
